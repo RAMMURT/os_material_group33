@@ -23,22 +23,40 @@
 #include <string.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <signal.h>
 
 // The <unistd.h> header is your gateway to the OS's process management facilities.
 #include <unistd.h>
 
 #include "parse.h"
 
+static void INThandler(int sig);
+static void handle_cmd(Command *cmd);
 static void print_cmd(Command *cmd);
 static void print_pgm(Pgm *p);
 void stripwhite(char *);
 
+const int READ = 0;
+const int WRITE = 1;
+
+int foregroundPID = -1;
+
 int main(void)
 {
+  signal(SIGINT, INThandler);
+
   for (;;)
   {
+    printf("\e[0;32m@\e[0m:\e[0;36m%s\e[0m", getcwd(NULL, 0));
     char *line;
     line = readline("> ");
+
+
+    // Handle Ctrl+D
+    if (line == NULL) {
+      free(line);
+      break;
+    }
 
     // Remove leading and trailing whitespace from the line
     stripwhite(line);
@@ -46,13 +64,17 @@ int main(void)
     // If the stripped line is not blank
     if (*line)
     {
+      // Detect "exit" command
+      if (strcmp(line, "exit") == 0) {
+        exit(0);
+      }
+
       add_history(line);
 
       Command cmd;
       if (parse(line, &cmd) == 1)
       {
-        // Print the parsed command
-        print_cmd(&cmd);
+        handle_cmd(&cmd);
       }
       else
       {
@@ -65,6 +87,196 @@ int main(void)
   }
 
   return 0;
+}
+
+static void INThandler(int sig) {
+  if (foregroundPID < 0) {
+    exit(SIGINT);
+    return;
+  }
+  kill(foregroundPID, SIGINT);
+  printf("\n");
+  foregroundPID = -1;
+}
+
+static void handle_cmd(Command *cmd) {
+  // Print the parsed command
+  // print_cmd(cmd);
+
+
+
+
+
+  char **args = cmd->pgm->pgmlist;
+  if (cmd->pgm->next == NULL && strcmp(args[0], "cd") == 0) {
+    if (args[2] != NULL) {
+      printf("cd: too many arguments\n");
+      return;
+    }
+    chdir(args[1]);
+    return;
+  }
+
+  int nrPipes = 0;
+  Pgm *currentProgram = cmd->pgm;
+  while (currentProgram != NULL) {
+    nrPipes++;
+    currentProgram = currentProgram->next;
+  }
+  nrPipes--;
+  
+  int pipes[2 * nrPipes];
+  for (int i = 0; i < nrPipes; i++) {
+    if (pipe(pipes + i * 2) < 0) {
+      printf("Pipe creation failed!\n");
+      return;
+    }
+  }
+
+  int idx = 0;
+  currentProgram = cmd->pgm;
+  while (currentProgram != NULL) {
+    int pid = fork();
+    foregroundPID = pid;
+    if (pid == -1) {
+      printf("Fork failed\n");
+      return;
+    }
+    // Child
+    else if (pid == 0) {
+      int saved_stdout = dup(STDOUT_FILENO);
+
+      if (idx - 1 >= 0) {
+        close(pipes[(idx - 1) * 2 + READ]);
+        dup2(pipes[(idx - 1) * 2 + WRITE], STDOUT_FILENO);
+      }
+      if (idx < nrPipes) {
+        dup2(pipes[idx * 2 + READ], STDIN_FILENO);
+        close(pipes[idx * 2 + WRITE]);
+      }
+      for (int i = 0; i < nrPipes; i++) {
+        if (i != idx - 1 && i != idx) {
+          close(pipes[i * 2 + READ]);
+          close(pipes[i * 2 + WRITE]);
+        }
+      }
+
+      char **list = currentProgram->pgmlist;
+      execvp(list[0], list);
+
+      // Restore stdout
+      dup2(saved_stdout, STDOUT_FILENO);
+      printf("Error in child process: %s\n", list[0]);
+      exit(1);
+    }
+    
+    idx++;
+    currentProgram = currentProgram->next;
+  }
+
+  for (int i = 0; i < nrPipes; i++) {
+    close(pipes[i * 2 + READ]);
+    close(pipes[i * 2 + WRITE]);
+  }
+  for (int i = 0; i < nrPipes + 1; i++) {
+    wait();
+  }
+  foregroundPID = -1;
+  // printf("Done\n");
+
+
+
+
+
+
+
+
+
+
+  // // int p[2];
+  // // if (pipe(p) < 0) {
+  // //   exit(1);
+  // // }
+
+  // int pid = fork();
+  // if (pid == -1) {
+  //   printf("Fork failed\n");
+  // }
+  // // Child
+  // else if (pid == 0) {
+  //   // close(p[0]);
+  //   // close(p[1]);
+  //   // dup2(OUT, p[WRITE]);
+  //   // dup2(IN, p[READ]);
+
+  //   // static char *newenviron[] = { NULL };
+  //   char **list = cmd->pgm->pgmlist;
+  //   execvp(list[0], list);
+
+  //   printf("Error in child process!\n");
+  // }
+  // // Parent
+  // else {
+  //   // close(p[READ]);
+  //   // close(p[WRITE]);
+  //   // dup2(p[READ], OUT);
+  //   // dup2(p[WRITE], IN);
+  //   wait();
+  //   printf("Done\n");
+  // }
+
+
+
+
+
+
+
+
+
+
+
+
+  // int p[2];
+  // if (pipe(p) < 0) {
+  //   printf("Pipe failed\n");
+  //   return;
+  // }
+
+  // int pid = fork();
+  // if (pid == -1) {
+  //   printf("Fork failed\n");
+  //   return;
+  // }
+  // // Child
+  // if (pid == 0) {
+  //   close(p[READ]);
+  //   dup2(p[WRITE], OUT);
+  //   static char *args[] = { "ls", NULL };
+  //   execvp(args[0], args);
+  //   printf("Error in ls process!\n");
+  //   return;
+  // }
+
+  // pid = fork();
+  // if (pid == -1) {
+  //   printf("Fork failed\n");
+  //   return;
+  // }
+  // // Child
+  // if (pid == 0) {
+  //   close(p[WRITE]);
+  //   dup2(p[READ], IN);
+  //   static char *args[] = { "wc", NULL };
+  //   execvp(args[0], args);
+  //   printf("Error in wc process!\n");
+  //   return;
+  // }
+
+  // close(p[READ]);
+  // close(p[WRITE]);
+  // wait();
+  // wait();
+  // printf("Done\n");
 }
 
 /*
