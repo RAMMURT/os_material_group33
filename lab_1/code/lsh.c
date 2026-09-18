@@ -24,6 +24,9 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <signal.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <errno.h>
 
 // The <unistd.h> header is your gateway to the OS's process management facilities.
 #include <unistd.h>
@@ -44,10 +47,13 @@ int foregroundPID = -1;
 int main(void)
 {
   signal(SIGINT, INThandler);
+  signal(SIGCHLD, SIG_IGN);
 
   for (;;)
   {
-    printf("\e[0;32m@\e[0m:\e[0;36m%s\e[0m", getcwd(NULL, 0));
+    while (waitpid(-1, NULL, WNOHANG) > 0) { /* Empty :) */ }
+
+    printf("\e[0;32m%s\e[0m:\e[0;36m%s\e[0m", getlogin(), getcwd(NULL, 0));
     char *line;
     line = readline("> ");
 
@@ -101,7 +107,7 @@ static void INThandler(int sig) {
 
 static void handle_cmd(Command *cmd) {
   // Print the parsed command
-  // print_cmd(cmd);
+  print_cmd(cmd);
 
 
 
@@ -137,7 +143,9 @@ static void handle_cmd(Command *cmd) {
   currentProgram = cmd->pgm;
   while (currentProgram != NULL) {
     int pid = fork();
-    foregroundPID = pid;
+    if (!cmd->background) {
+      foregroundPID = pid;
+    }
     if (pid == -1) {
       printf("Fork failed\n");
       return;
@@ -150,15 +158,27 @@ static void handle_cmd(Command *cmd) {
         close(pipes[(idx - 1) * 2 + READ]);
         dup2(pipes[(idx - 1) * 2 + WRITE], STDOUT_FILENO);
       }
+      else if (cmd->rstdout != NULL) {
+        int fd = open(cmd->rstdout, O_WRONLY | O_CREAT, 0644);
+        dup2(fd, STDOUT_FILENO);
+      }
       if (idx < nrPipes) {
         dup2(pipes[idx * 2 + READ], STDIN_FILENO);
         close(pipes[idx * 2 + WRITE]);
+      }
+      else if (cmd->rstdin != NULL) {
+        int fd = open(cmd->rstdin, 0);
+        dup2(fd, STDIN_FILENO);
       }
       for (int i = 0; i < nrPipes; i++) {
         if (i != idx - 1 && i != idx) {
           close(pipes[i * 2 + READ]);
           close(pipes[i * 2 + WRITE]);
         }
+      }
+
+      if (cmd->background) {
+        signal(SIGINT, SIG_IGN);
       }
 
       char **list = currentProgram->pgmlist;
@@ -178,8 +198,13 @@ static void handle_cmd(Command *cmd) {
     close(pipes[i * 2 + READ]);
     close(pipes[i * 2 + WRITE]);
   }
-  for (int i = 0; i < nrPipes + 1; i++) {
-    wait();
+  if (!cmd->background) {
+    for (int i = 0; i < nrPipes + 1; i++) {
+      wait(NULL);
+    }
+  }
+  else {
+    printf("[:)] %d\n", foregroundPID);
   }
   foregroundPID = -1;
   // printf("Done\n");
