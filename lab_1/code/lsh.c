@@ -46,17 +46,16 @@ int foregroundPID = -1;
 
 int main(void)
 {
+  // Handle SIGINT
   signal(SIGINT, INThandler);
+  // Ignore child processes to prevent zombies
   signal(SIGCHLD, SIG_IGN);
 
   for (;;)
   {
-    while (waitpid(-1, NULL, WNOHANG) > 0) { /* Empty :) */ }
-
     printf("\e[0;32m%s\e[0m:\e[0;36m%s\e[0m", getlogin(), getcwd(NULL, 0));
     char *line;
     line = readline("> ");
-
 
     // Handle Ctrl+D
     if (line == NULL) {
@@ -96,23 +95,39 @@ int main(void)
 }
 
 static void INThandler(int sig) {
+  // Ignore SIGINT
+  signal(SIGINT, SIG_IGN);
+
+  // No foreground process? Exit shell
   if (foregroundPID < 0) {
     exit(SIGINT);
     return;
   }
+
+  // Kill foreground process
   kill(foregroundPID, SIGINT);
   printf("\n");
   foregroundPID = -1;
+
+  // Re-install SIGINT handler
+  signal(SIGINT, INThandler);
+}
+
+static int nr_programs(Command *cmd) {
+  int count = 0;
+  Pgm *currentProgram = cmd->pgm;
+  while (currentProgram != NULL) {
+    count++;
+    currentProgram = currentProgram->next;
+  }
+  return count;
 }
 
 static void handle_cmd(Command *cmd) {
-  // Print the parsed command
-  print_cmd(cmd);
+  // // Print the parsed command
+  // print_cmd(cmd);
 
-
-
-
-
+  // Handle "cd"
   char **args = cmd->pgm->pgmlist;
   if (cmd->pgm->next == NULL && strcmp(args[0], "cd") == 0) {
     if (args[2] != NULL) {
@@ -123,14 +138,8 @@ static void handle_cmd(Command *cmd) {
     return;
   }
 
-  int nrPipes = 0;
-  Pgm *currentProgram = cmd->pgm;
-  while (currentProgram != NULL) {
-    nrPipes++;
-    currentProgram = currentProgram->next;
-  }
-  nrPipes--;
-  
+  // Create n - 1 pipes
+  int nrPipes = nr_programs(cmd) - 1;
   int pipes[2 * nrPipes];
   for (int i = 0; i < nrPipes; i++) {
     if (pipe(pipes + i * 2) < 0) {
@@ -140,20 +149,19 @@ static void handle_cmd(Command *cmd) {
   }
 
   int idx = 0;
-  currentProgram = cmd->pgm;
+  Pgm *currentProgram = cmd->pgm;
   while (currentProgram != NULL) {
     int pid = fork();
-    if (!cmd->background) {
-      foregroundPID = pid;
-    }
     if (pid == -1) {
       printf("Fork failed\n");
       return;
     }
+
     // Child
-    else if (pid == 0) {
+    if (pid == 0) {
       int saved_stdout = dup(STDOUT_FILENO);
 
+      // Connect STDOUT to write pipe
       if (idx - 1 >= 0) {
         close(pipes[(idx - 1) * 2 + READ]);
         dup2(pipes[(idx - 1) * 2 + WRITE], STDOUT_FILENO);
@@ -162,6 +170,8 @@ static void handle_cmd(Command *cmd) {
         int fd = open(cmd->rstdout, O_WRONLY | O_CREAT, 0644);
         dup2(fd, STDOUT_FILENO);
       }
+
+      // Connect STDIN to read pipe
       if (idx < nrPipes) {
         dup2(pipes[idx * 2 + READ], STDIN_FILENO);
         close(pipes[idx * 2 + WRITE]);
@@ -170,6 +180,8 @@ static void handle_cmd(Command *cmd) {
         int fd = open(cmd->rstdin, 0);
         dup2(fd, STDIN_FILENO);
       }
+
+      // Close all pipes except the two connected to this child
       for (int i = 0; i < nrPipes; i++) {
         if (i != idx - 1 && i != idx) {
           close(pipes[i * 2 + READ]);
@@ -178,9 +190,17 @@ static void handle_cmd(Command *cmd) {
       }
 
       if (cmd->background) {
+        // Print PID of background process
+        printf("PID: %d\n", getpid());
+        // Prevent background process from accessing terminal I/O
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+        close(STDIN_FILENO);
+        // Ignore SIGINT
         signal(SIGINT, SIG_IGN);
       }
 
+      // Execute command
       char **list = currentProgram->pgmlist;
       execvp(list[0], list);
 
@@ -189,119 +209,30 @@ static void handle_cmd(Command *cmd) {
       printf("Error in child process: %s\n", list[0]);
       exit(1);
     }
+    // Parent
+    else {
+      // Store pid so it can be SIGINT'ed
+      if (!cmd->background) {
+        foregroundPID = pid;
+      }
+    }
     
     idx++;
     currentProgram = currentProgram->next;
   }
 
+  // Close all pipes in parent as they are not needed
   for (int i = 0; i < nrPipes; i++) {
     close(pipes[i * 2 + READ]);
     close(pipes[i * 2 + WRITE]);
   }
+  // Wait for all foreground processes
   if (!cmd->background) {
     for (int i = 0; i < nrPipes + 1; i++) {
       wait(NULL);
     }
   }
-  else {
-    printf("[:)] %d\n", foregroundPID);
-  }
   foregroundPID = -1;
-  // printf("Done\n");
-
-
-
-
-
-
-
-
-
-
-  // // int p[2];
-  // // if (pipe(p) < 0) {
-  // //   exit(1);
-  // // }
-
-  // int pid = fork();
-  // if (pid == -1) {
-  //   printf("Fork failed\n");
-  // }
-  // // Child
-  // else if (pid == 0) {
-  //   // close(p[0]);
-  //   // close(p[1]);
-  //   // dup2(OUT, p[WRITE]);
-  //   // dup2(IN, p[READ]);
-
-  //   // static char *newenviron[] = { NULL };
-  //   char **list = cmd->pgm->pgmlist;
-  //   execvp(list[0], list);
-
-  //   printf("Error in child process!\n");
-  // }
-  // // Parent
-  // else {
-  //   // close(p[READ]);
-  //   // close(p[WRITE]);
-  //   // dup2(p[READ], OUT);
-  //   // dup2(p[WRITE], IN);
-  //   wait();
-  //   printf("Done\n");
-  // }
-
-
-
-
-
-
-
-
-
-
-
-
-  // int p[2];
-  // if (pipe(p) < 0) {
-  //   printf("Pipe failed\n");
-  //   return;
-  // }
-
-  // int pid = fork();
-  // if (pid == -1) {
-  //   printf("Fork failed\n");
-  //   return;
-  // }
-  // // Child
-  // if (pid == 0) {
-  //   close(p[READ]);
-  //   dup2(p[WRITE], OUT);
-  //   static char *args[] = { "ls", NULL };
-  //   execvp(args[0], args);
-  //   printf("Error in ls process!\n");
-  //   return;
-  // }
-
-  // pid = fork();
-  // if (pid == -1) {
-  //   printf("Fork failed\n");
-  //   return;
-  // }
-  // // Child
-  // if (pid == 0) {
-  //   close(p[WRITE]);
-  //   dup2(p[READ], IN);
-  //   static char *args[] = { "wc", NULL };
-  //   execvp(args[0], args);
-  //   printf("Error in wc process!\n");
-  //   return;
-  // }
-
-  // close(p[READ]);
-  // close(p[WRITE]);
-  // wait();
-  // wait();
-  // printf("Done\n");
 }
 
 /*
