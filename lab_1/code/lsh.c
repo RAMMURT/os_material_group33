@@ -148,6 +148,8 @@ static void handle_cmd(Command *cmd) {
     }
   }
 
+  int pids[nrPipes + 1];
+
   int idx = 0;
   Pgm *currentProgram = cmd->pgm;
   while (currentProgram != NULL) {
@@ -156,6 +158,7 @@ static void handle_cmd(Command *cmd) {
       printf("Fork failed\n");
       return;
     }
+    pids[idx] = pid;
 
     // Child
     if (pid == 0) {
@@ -229,7 +232,8 @@ static void handle_cmd(Command *cmd) {
   // Wait for all foreground processes
   if (!cmd->background) {
     for (int i = 0; i < nrPipes + 1; i++) {
-      wait(NULL);
+      int pid = pids[i];
+      waitpid(pid, NULL, 0);
     }
   }
   foregroundPID = -1;
