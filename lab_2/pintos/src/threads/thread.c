@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "../devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -117,11 +118,26 @@ thread_start (void)
   sema_down (&idle_started);
 }
 
+/* Checks if the thread is done sleepig and unblocks it */
+void
+wake_sleeping_threads (struct thread *t, void *aux)
+{
+  int64_t now = *(int64_t*)aux;
+  if (t->sleeping && now >= t->sleep_done)
+  {
+    t->sleeping = false;
+    thread_unblock (t);
+  }
+}
+
 /* Called by the timer interrupt handler at each timer tick.
-   Thus, this function runs in an external interrupt context. */
+Thus, this function runs in an external interrupt context. */
 void
 thread_tick (void) 
 {
+  int64_t now = timer_ticks ();
+  thread_foreach(wake_sleeping_threads, &now);
+
   struct thread *t = thread_current ();
 
   /* Update statistics. */
