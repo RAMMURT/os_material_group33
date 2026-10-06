@@ -92,10 +92,10 @@ timer_sleep (int64_t ticks)
   ASSERT (t->sleeping == false);
   
   int64_t start = timer_ticks ();
-  t->sleeping = true;
-  t->sleep_done = start + ticks;
 
   enum intr_level old_level = intr_disable ();
+  t->sleeping = true;
+  t->sleep_done = start + ticks;
   thread_block ();
   intr_set_level (old_level);
 }
