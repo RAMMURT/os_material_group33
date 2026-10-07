@@ -102,7 +102,7 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
 
     /* Owned by us :) */
-    int64_t sleeping;                   /* Are we sleeping? */
+    bool sleeping;                   /* Are we sleeping? */
     int64_t sleep_done;                 /* The tick when sleeping should stop */
   };
 
