@@ -3,13 +3,14 @@ Compiling and Running
 
 Use CMake:
 ```sh
-cmake -Bbuild
+cmake -B build
 cmake --build build
 ./build/lsh
 ```
 
 The starter code has been tested on:
 - Ubuntu 22.04
+- OpenSuse Tumbleweed 20260829 (see note below)
 - Debian 6.1.94-1 (StuDAT)
 - macOS 12.x / 13.x (Apple silicon)
 

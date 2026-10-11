@@ -4,32 +4,60 @@ This repository contains teaching material for the Operating Systems course EDA0
 
 ## Repository Contents
 
-- Topic folders such as `processes/`, `threads/`, and `virtual_memory/` contain the video lectures (`.mp4`) and matching subtitles (`.srt`).
-- `slides/` contains the slide decks, usually as both editable `.pptx` files and exported `.pdf` files. For most of the lectures, the last slides contain questions that can be used to assess the understanding of students during live discussions. Answers are given in the notes section of the PowerPoint files.
+- Topic folders such as `processes/`, `threads/`, and `virtual_memory/` contain the video lectures (`.mp4`), matching subtitles (`.srt`), and the corresponding slide decks, usually as both editable `.pptx` files and exported `.pdf` files.
+- `other_slides/` contains slide decks that are not tied to a specific video lecture, such as the course introduction and conclusion.
+- For most lectures, the last slides contain questions that can be used to assess students' understanding during live discussions. Answers are given in the notes section of the PowerPoint files.
+- Some topic folders also contain exam questions and answers in Markdown format. These files can be compiled into PDFs either with answers or as questions only.
 - `overview.xlsx` is the source overview used for the suggested lecture order below.
 
 The `.mp4` files are tracked with Git LFS. After cloning, run `git lfs pull` if the videos are missing or appear as pointer files.
 
 ## Suggested Order
 
-The order below is the suggested order for the various lectures. For each lecture, use the matching slide deck in `slides/` and watch the numbered videos in the corresponding topic folder. For your convenience, you can also find below links to YouTube playlists that contain the same videos. Please, send me a mail if some video is wrong / has wrong or misaligned subtitles.
+The order below is the suggested order for the various lectures. For each lecture, use the matching slide deck and watch the numbered videos in the corresponding topic folder. For your convenience, you can also find below links to YouTube playlists that contain the same videos. Please, send me a mail if some video is wrong / has wrong or misaligned subtitles.
 
-| Order | Lecture | Link (YouTube playlist)
-| --- | --- | --- |
-| 01 | Introduction | https://www.youtube.com/playlist?list=PLNP2wHlXPxGs |
-| 02 | Processes | https://www.youtube.com/playlist?list=PLdKN6j-dCZb0 |
-| 03 | Multithreaded Programming | https://www.youtube.com/playlist?list=PLSL2B2hUh7xo |
-| 04 | Scheduling | https://www.youtube.com/playlist?list=PLDtjXc-5M71M |
-| 05 | Synchronization - Part 1 | https://www.youtube.com/playlist?list=PLG8eRVzYTT1U | 
-| 06 | Synchronization - Part 2 | https://www.youtube.com/playlist?list=PLDwUGWNT5DeI |
-| 07 | Memory Management | https://www.youtube.com/playlist?list=PLSX1pbp9RzZ4 |
-| 08 | Virtual Memory | https://www.youtube.com/playlist?list=PLes0bMzQDLbU |
-| 09 | File Systems | https://www.youtube.com/playlist?list=PLXjfl1TCxXHk | 
-| 10 | Security | https://www.youtube.com/playlist?list=PLSdxAi6R1GFc |
-| 11 | I/O Systems | https://www.youtube.com/playlist?list=PLCxd6fxIcgqQ |
-| 12 | Virtualization | https://www.youtube.com/playlist?list=PLFTGTnFYUFwU |
+| Order | Lecture | Folder | Slides | Link (YouTube playlist) |
+| --- | --- | --- | --- | --- |
+| 01 | Introduction | [`introduction_os/`](introduction_os/) | [`pdf`](introduction_os/introduction_os.pdf), [`pptx`](introduction_os/introduction_os.pptx) | https://www.youtube.com/playlist?list=PLNP2wHlXPxGs |
+| 02 | Processes | [`processes/`](processes/) | [`pdf`](processes/processes.pdf), [`pptx`](processes/processes.pptx) | https://www.youtube.com/playlist?list=PLdKN6j-dCZb0 |
+| 03 | Multithreaded Programming | [`threads/`](threads/) | [`pdf`](threads/threads.pdf), [`pptx`](threads/threads.pptx) | https://www.youtube.com/playlist?list=PLSL2B2hUh7xo |
+| 04 | Process Scheduling | [`process_scheduling/`](process_scheduling/) | [`pdf`](process_scheduling/process_scheduling.pdf), [`pptx`](process_scheduling/process_scheduling.pptx) | https://www.youtube.com/playlist?list=PLDtjXc-5M71M |
+| 05 | Synchronization - Part 1 | [`synchronization_part_1/`](synchronization_part_1/) | [`pdf`](synchronization_part_1/synchronization_part_1.pdf), [`pptx`](synchronization_part_1/synchronization_part_1.pptx) | https://www.youtube.com/playlist?list=PLG8eRVzYTT1U |
+| 06 | Synchronization - Part 2 | [`synchronization_part_2/`](synchronization_part_2/) | [`pdf`](synchronization_part_2/synchronization_part_2.pdf), [`pptx`](synchronization_part_2/synchronization_part_2.pptx) | https://www.youtube.com/playlist?list=PLDwUGWNT5DeI |
+| 07 | Memory Management | [`memory_management/`](memory_management/) | [`pdf`](memory_management/memory_management.pdf), [`pptx`](memory_management/memory_management.pptx) | https://www.youtube.com/playlist?list=PLSX1pbp9RzZ4 |
+| 08 | Virtual Memory | [`virtual_memory/`](virtual_memory/) | [`pdf`](virtual_memory/virtual_memory.pdf), [`pptx`](virtual_memory/virtual_memory.pptx) | https://www.youtube.com/playlist?list=PLes0bMzQDLbU |
+| 09 | File Systems | [`file_system/`](file_system/) | [`pdf`](file_system/file_systems.pdf), [`pptx`](file_system/file_systems.pptx) | https://www.youtube.com/playlist?list=PLXjfl1TCxXHk |
+| 10 | Security | [`security/`](security/) | [`pdf`](security/security.pdf), [`pptx`](security/security.pptx) | https://www.youtube.com/playlist?list=PLSdxAi6R1GFc |
+| 11 | I/O Systems | [`io_system/`](io_system/) | [`pdf`](io_system/io_systems.pdf), [`pptx`](io_system/IO_systems.pptx) | https://www.youtube.com/playlist?list=PLCxd6fxIcgqQ |
+| 12 | Virtualization | [`virtualization/`](virtualization/) | [`pdf`](virtualization/virtualization.pdf), [`pptx`](virtualization/virtualization.pptx) | https://www.youtube.com/playlist?list=PLFTGTnFYUFwU |
 
-Additional slide-only decks are available for the course introduction and conclusion.
+Additional slide-only decks are available for the course introduction and conclusion in `other_slides/`:
+
+- [`course_introduction.pdf`](other_slides/course_introduction.pdf) / [`course_introduction.pptx`](other_slides/course_introduction.pptx)
+- [`conclusion.pdf`](other_slides/conclusion.pdf) / [`conclusion.pptx`](other_slides/conclusion.pptx)
+
+## Exam Questions
+
+Some folders contain Markdown files with exam questions and answers, for example:
+
+- [`processes/processes_exam_questions_answers.md`](processes/processes_exam_questions_answers.md)
+- [`threads/threads_exam_questions_answers.md`](threads/threads_exam_questions_answers.md)
+- [`process_scheduling/process_scheduling_exam_questions_answers.md`](process_scheduling/process_scheduling_exam_questions_answers.md)
+
+These Markdown files can be compiled into PDFs with [`scripts/compile_markdown_pdf.py`](scripts/compile_markdown_pdf.py). Use `--mode questions-and-answers` to include answers, or `--mode questions` to produce a PDF with questions only.
+
+For example:
+
+```bash
+python3 scripts/compile_markdown_pdf.py processes/processes_exam_questions_answers.md --mode questions-and-answers
+python3 scripts/compile_markdown_pdf.py processes/processes_exam_questions_answers.md --mode questions
+```
+
+By default, the generated PDF is saved next to the Markdown file. Use `-o` to choose a specific output path:
+
+```bash
+python3 scripts/compile_markdown_pdf.py threads/threads_exam_questions_answers.md --mode questions -o threads/threads_exam_questions.pdf
+```
 
 ## Video Part Order
 
@@ -50,7 +78,7 @@ Additional slide-only decks are available for the course introduction and conclu
 6. Inter-process communication
 7. Pipes
 
-### 03. Threads
+### 03. Multithreaded Programming
 
 1. Introduction
 2. Multithreaded processes
@@ -61,7 +89,7 @@ Additional slide-only decks are available for the course introduction and conclu
 7. Implicit threading
 8. Threading issues
 
-### 04. Scheduling
+### 04. Process Scheduling
 
 1. Introduction and CPU-bound vs. I/O-bound processes
 2. Scheduling goals in batch systems
@@ -170,3 +198,7 @@ The material is mainly based on the book *Modern Operating Systems* by Andrew S.
 - Lecture 10, security: Chapter 9, from the beginning until 9.4.1 (only the first paragraph of 9.4.1); 9.6 to 9.7.1 (only up to Data Execution Prevention - included); 9.9.3; The Sony Rootkit (starts at page 683, part of 9.9.5)
 - Lecture 11, I/O systems: Chapter 5.1-5.3
 - Lecture 12, virtualization: Chapter 7, 7.1-7.10 (included)
+
+## Acknowledgement
+
+This material is prepared for teaching purposes and builds on standard operating systems textbooks, in particular *Modern Operating Systems* by Andrew S. Tanenbaum and Herbert Bos, and *Operating System Concepts* by Abraham Silberschatz, Peter Baer Galvin, and Greg Gagne. Some figures, examples, and exercises used in the slides and supporting material are adapted from or inspired by these books. They remain the work of their respective authors and publishers; they are included here only to support the course and are not claimed as original material.
