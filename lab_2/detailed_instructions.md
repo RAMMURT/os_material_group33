@@ -21,7 +21,7 @@ Once you have logged in to one of these machines, either locally or remotely, fe
 Add the required binary directories to your `PATH`. Under Bash, the standard login shell, add the following line to `$HOME/.bashrc`, creating the file if it does not exist:
 
 ```sh
-export PATH=/chalmers/sw/unsup64/phc/b/pkg/bochs-2.6.6/bin:$HOME/pintos/src/utils:$PATH
+export PATH=/chalmers/sw/unsup64/phc/b/pkg/bochs-2.6.6/bin:$HOME/Documents/EDA093/os_material_group33/lab_2/pintos/src/utils:$PATH
 ```
 
 Files whose names begin with a dot are hidden and may not appear in file managers. Reload the configuration:
