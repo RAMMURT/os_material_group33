@@ -1,4 +1,4 @@
-/*
+ /*
  * Exercise on thread synchronization.
  *
  * Assume a half-duplex communication bus with limited capacity, measured in
@@ -35,6 +35,9 @@
 #define MAX_NUM_OF_TASKS 200
 
 #define BUS_CAPACITY 3
+
+
+#define IDX(dir, pri) ((dir) * 2 + (pri)) /* 0: Send normal, 1: Send priority, 2: Receive normal, 3: receive priority   */
 
 typedef enum {
   SEND,
@@ -188,19 +191,25 @@ static direction_t other_direction(direction_t this_direction) {
   return this_direction == SEND ? RECEIVE : SEND;
 }
 
-void get_slot (const task_t *task) {
+int can_go(direction_t d, priority_t p) {
+  return cars < BUS_CAPACITY && (cars == 0 || D == d) && (p == PRIORITY || nrPrio == 0);
+}
 
+void get_slot (const task_t *task) {
   direction_t d = task->direction;
-  int d_int = d == SEND ? 0 : 1;
+  priority_t p = task->priority;
+  int idx = IDX (d, task->priority);
 
   lock_acquire(&bridge);
 
-  while (cars == BUS_CAPACITY || (cars > 0 && D != d) || (task->priority == NORMAL && nrPrio > 0)) {
-    waitingToGo[d_int]++;
-    nrPrio += task->priority == PRIORITY ? 1 : 0;
-    cond_wait(&waitingToGoCond[d_int], &bridge);
-    waitingToGo[d_int]--;
-    nrPrio -= task->priority == PRIORITY ? 1 : 0;
+  while (!can_go(d, p)) {
+    waitingToGo[idx]++;
+    if (p == PRIORITY)
+      nrPrio++;
+    cond_wait(&waitingToGoCond[idx], &bridge);
+    waitingToGo[idx]--;
+    if (p == PRIORITY)
+      nrPrio--;
   }
   cars++;
   D = d;
@@ -226,20 +235,24 @@ void transfer_data (const task_t *task) {
 }
 
 void release_slot (const task_t *task) {
-
   direction_t d = task->direction;
-  int d_int = d == SEND ? 0 : 1;
+  direction_t od = other_direction(d);
 
   lock_acquire(&bridge);
   cars--;
-  // nrPrio -= task->priority == PRIORITY ? 1 : 0;
 
-  if (waitingToGo[d_int] > 0) {
-    cond_signal(&waitingToGoCond[d_int], &bridge);
-  }
-  else {
-    cond_broadcast(&waitingToGoCond[1 - d_int], &bridge);
-  }
+  if (waitingToGo[IDX (d, PRIORITY)] > 0)   /* prio task going same way*/
+    cond_signal (&waitingToGoCond[IDX (d, PRIORITY)], &bridge);
+  else if (cars == 0 && waitingToGo[IDX (od, PRIORITY)] > 0) /* prio task going other way*/
+    cond_broadcast (&waitingToGoCond[IDX (od, PRIORITY)], &bridge);
+  else if (nrPrio == 0)
+    {
+        if (waitingToGo[IDX (d, NORMAL)] > 0)
+        cond_signal (&waitingToGoCond[IDX (d, NORMAL)], &bridge); /* normal task going same way*/
+        else if (cars == 0 && waitingToGo[IDX (od, NORMAL)] > 0)
+        cond_broadcast (&waitingToGoCond[IDX (od, NORMAL)], &bridge); /* normal task going other way*/
+    }
+
 
   lock_release(&bridge);
 
