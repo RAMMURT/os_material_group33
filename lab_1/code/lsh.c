@@ -199,8 +199,8 @@ static void handle_cmd(Command *cmd) {
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
         close(STDIN_FILENO);
-        // Ignore SIGINT
-        signal(SIGINT, SIG_IGN);
+        // Ignore Ctrl+C
+        setpgid(0, 0);
       }
 
       // Execute command
