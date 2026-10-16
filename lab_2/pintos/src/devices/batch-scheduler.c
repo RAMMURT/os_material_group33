@@ -59,11 +59,11 @@ typedef struct {
   unsigned long transfer_duration;
 } task_t;
 
-static int cars = 0;
-static direction_t D = SEND;
-static struct lock bridge;
-static int waitingToGo[4] = { 0, 0, 0, 0 };
-static struct condition waitingToGoCond[4] = {0};
+static int tasks_on_bus = 0;
+static direction_t current_direction = SEND;
+static struct lock bus_lock;
+static int waiting_to_go[4] = { 0, 0, 0, 0 };
+static struct condition waitingToGo_cond[4] = { 0, 0, 0, 0 };
 
 void init_bus (void);
 void batch_scheduler (unsigned int num_priority_send,
@@ -89,11 +89,11 @@ void init_bus (void) {
 
   random_init ((unsigned int)123456789);
 
-  lock_init(&bridge);
-  cond_init(&waitingToGoCond[0]);
-  cond_init(&waitingToGoCond[1]);
-  cond_init(&waitingToGoCond[2]);
-  cond_init(&waitingToGoCond[3]);
+  lock_init(&bus_lock);
+  cond_init(&waitingToGo_cond[0]);
+  cond_init(&waitingToGo_cond[1]);
+  cond_init(&waitingToGo_cond[2]);
+  cond_init(&waitingToGo_cond[3]);
 }
 
 void batch_scheduler (unsigned int num_priority_send,
@@ -188,11 +188,11 @@ static direction_t other_direction(direction_t this_direction) {
 }
 
 int any_prio() {
-  return waitingToGo[IDX(SEND, 1)] + waitingToGo[IDX(RECEIVE, 1)] != 0;
+  return waiting_to_go[IDX(SEND, 1)] + waiting_to_go[IDX(RECEIVE, 1)] != 0;
 }
 
 int can_go(direction_t d, priority_t p) {
-  return cars < BUS_CAPACITY && (cars == 0 || D == d) && (p == PRIORITY || !any_prio());
+  return tasks_on_bus < BUS_CAPACITY && (tasks_on_bus == 0 || current_direction == d) && (p == PRIORITY || !any_prio());
 }
 
 void get_slot (const task_t *task) {
@@ -200,16 +200,16 @@ void get_slot (const task_t *task) {
   priority_t p = task->priority;
   int idx = IDX (d, task->priority);
 
-  lock_acquire(&bridge);
+  lock_acquire(&bus_lock);
 
   while (!can_go(d, p)) {
-    waitingToGo[idx]++;
-    cond_wait(&waitingToGoCond[idx], &bridge);
-    waitingToGo[idx]--;
+    waiting_to_go[idx]++;
+    cond_wait(&waitingToGo_cond[idx], &bus_lock);
+    waiting_to_go[idx]--;
   }
-  cars++;
-  D = d;
-  lock_release(&bridge);
+  tasks_on_bus++;
+  current_direction = d;
+  lock_release(&bus_lock);
 }
 
 void transfer_data (const task_t *task) {
@@ -221,20 +221,20 @@ void release_slot (const task_t *task) {
   direction_t d = task->direction;
   direction_t od = other_direction(d);
 
-  lock_acquire(&bridge);
-  cars--;
+  lock_acquire(&bus_lock);
+  tasks_on_bus--;
 
-  if (waitingToGo[IDX (d, PRIORITY)] > 0)   /* prio task going same way*/
-    cond_signal (&waitingToGoCond[IDX (d, PRIORITY)], &bridge);
-  else if (cars == 0 && waitingToGo[IDX (od, PRIORITY)] > 0) /* prio task going other way*/
-    cond_broadcast (&waitingToGoCond[IDX (od, PRIORITY)], &bridge);
+  if (waiting_to_go[IDX (d, PRIORITY)] > 0)   /* prio task going same way*/
+    cond_signal (&waitingToGo_cond[IDX (d, PRIORITY)], &bus_lock);
+  else if (tasks_on_bus == 0 && waiting_to_go[IDX (od, PRIORITY)] > 0) /* prio task going other way*/
+    cond_broadcast (&waitingToGo_cond[IDX (od, PRIORITY)], &bus_lock);
   else if (!any_prio())
   {
-    if (waitingToGo[IDX (d, NORMAL)] > 0)
-      cond_signal (&waitingToGoCond[IDX (d, NORMAL)], &bridge); /* normal task going same way*/
-    else if (cars == 0 && waitingToGo[IDX (od, NORMAL)] > 0)
-      cond_broadcast (&waitingToGoCond[IDX (od, NORMAL)], &bridge); /* normal task going other way*/
+    if (waiting_to_go[IDX (d, NORMAL)] > 0)
+      cond_signal (&waitingToGo_cond[IDX (d, NORMAL)], &bus_lock); /* normal task going same way*/
+    else if (tasks_on_bus == 0 && waiting_to_go[IDX (od, NORMAL)] > 0)
+      cond_broadcast (&waitingToGo_cond[IDX (od, NORMAL)], &bus_lock); /* normal task going other way*/
   }
 
-  lock_release(&bridge);
+  lock_release(&bus_lock);
 }
