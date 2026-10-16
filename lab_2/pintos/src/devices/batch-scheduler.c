@@ -64,7 +64,6 @@ static direction_t D = SEND;
 static struct lock bridge;
 static int waitingToGo[4] = { 0, 0, 0, 0 };
 static struct condition waitingToGoCond[4] = {0};
-static int nrPrio = 0;
 
 void init_bus (void);
 void batch_scheduler (unsigned int num_priority_send,
@@ -95,9 +94,6 @@ void init_bus (void) {
   cond_init(&waitingToGoCond[1]);
   cond_init(&waitingToGoCond[2]);
   cond_init(&waitingToGoCond[3]);
-
-  /* TODO: Initialize global/static variables,
-     e.g. your condition variables, locks, counters etc */
 }
 
 void batch_scheduler (unsigned int num_priority_send,
@@ -191,8 +187,12 @@ static direction_t other_direction(direction_t this_direction) {
   return this_direction == SEND ? RECEIVE : SEND;
 }
 
+int any_prio() {
+  return waitingToGo[IDX(SEND, 1)] + waitingToGo[IDX(RECEIVE, 1)] != 0;
+}
+
 int can_go(direction_t d, priority_t p) {
-  return cars < BUS_CAPACITY && (cars == 0 || D == d) && (p == PRIORITY || nrPrio == 0);
+  return cars < BUS_CAPACITY && (cars == 0 || D == d) && (p == PRIORITY || !any_prio());
 }
 
 void get_slot (const task_t *task) {
@@ -204,29 +204,12 @@ void get_slot (const task_t *task) {
 
   while (!can_go(d, p)) {
     waitingToGo[idx]++;
-    if (p == PRIORITY)
-      nrPrio++;
     cond_wait(&waitingToGoCond[idx], &bridge);
     waitingToGo[idx]--;
-    if (p == PRIORITY)
-      nrPrio--;
   }
   cars++;
   D = d;
   lock_release(&bridge);
-
-
-  /* TODO: Try to get a slot, respect the following rules:
-   *        1. There can be only BUS_CAPACITY tasks using the bus
-   *        2. The bus is half-duplex: All tasks using the bus should be either
-   * sending or receiving
-   *        3. A normal task should not get the bus if there are priority tasks
-   * waiting
-   *
-   * You do not need to guarantee fairness or freedom from starvation:
-   * feel free to schedule priority tasks of the same direction,
-   * even if there are priority tasks of the other direction waiting
-   */
 }
 
 void transfer_data (const task_t *task) {
@@ -245,19 +228,13 @@ void release_slot (const task_t *task) {
     cond_signal (&waitingToGoCond[IDX (d, PRIORITY)], &bridge);
   else if (cars == 0 && waitingToGo[IDX (od, PRIORITY)] > 0) /* prio task going other way*/
     cond_broadcast (&waitingToGoCond[IDX (od, PRIORITY)], &bridge);
-  else if (nrPrio == 0)
-    {
-        if (waitingToGo[IDX (d, NORMAL)] > 0)
-        cond_signal (&waitingToGoCond[IDX (d, NORMAL)], &bridge); /* normal task going same way*/
-        else if (cars == 0 && waitingToGo[IDX (od, NORMAL)] > 0)
-        cond_broadcast (&waitingToGoCond[IDX (od, NORMAL)], &bridge); /* normal task going other way*/
-    }
-
+  else if (!any_prio())
+  {
+    if (waitingToGo[IDX (d, NORMAL)] > 0)
+      cond_signal (&waitingToGoCond[IDX (d, NORMAL)], &bridge); /* normal task going same way*/
+    else if (cars == 0 && waitingToGo[IDX (od, NORMAL)] > 0)
+      cond_broadcast (&waitingToGoCond[IDX (od, NORMAL)], &bridge); /* normal task going other way*/
+  }
 
   lock_release(&bridge);
-
-  /* TODO: Release the slot, think about the actions you need to perform:
-   *       - Do you need to notify any waiting task?
-   *       - Do you need to increment/decrement any counter?
-   */
 }
